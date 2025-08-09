@@ -1,0 +1,17 @@
+{application, job_app,
+ [
+  {description, "HTTP Job Processing Service"},
+  {vsn, "0.1.0"},
+  {modules, [
+      job_app,
+      job_app_sup,
+      http_server,
+      http_handler,
+      job_manager,
+      job_worker,
+      job_sort
+  ]},
+  {registered, [job_sup, http_server, job_manager]},
+  {applications, [kernel, stdlib, cowboy, jsx]},
+  {mod, {job_app, []}}
+ ]}.
