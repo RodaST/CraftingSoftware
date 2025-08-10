@@ -5,7 +5,10 @@
 -export([start_link/3]).
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3]).
 
--record(state, {id, tasks, manager, order=[]}).
+-record(state, {id,
+                tasks,
+                manager,
+                order=[]}).
 
 start_link(Id, Tasks, ManagerPid) ->
     gen_server:start_link(?MODULE, {Id, Tasks, ManagerPid}, []).
