@@ -3,34 +3,44 @@
 -module(job_worker).
 -behaviour(gen_server).
 -export([start_link/3]).
--export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3]).
+-export([init/1, handle_call/3, handle_cast/2, handle_info/2]).
 
--record(state, {id,
-                tasks,
-                manager,
-                order=[]}).
+-include("types.hrl").
 
+-record(state, {
+    id      :: job_id(),
+    tasks   :: tasks_map(),
+    manager :: pid(),
+    order   :: [task_name()] | []
+}).
+
+-spec start_link(job_id(), tasks_map(), pid()) ->
+          {ok, pid()} | {error, any()}.
 start_link(Id, Tasks, ManagerPid) ->
     gen_server:start_link(?MODULE, {Id, Tasks, ManagerPid}, []).
 
+-spec init({job_id(), tasks_map(), pid()}) ->
+          {ok, #state{}}.
 init({Id, Tasks, Manager}) ->
     self() ! start,
     {ok, #state{id=Id, tasks=Tasks, manager=Manager, order=[]}}.
 
 handle_call(_,_,S) -> {reply,ok,S}.
+
+-spec handle_cast(term(), #state{}) -> {noreply, #state{}}.
 handle_cast(_,S) -> {noreply,S}.
 
+-spec handle_info(term(), #state{}) ->
+          {noreply, #state{}} | {stop, normal, #state{}}.
 handle_info(start, State=#state{id=Id, tasks=Tasks, manager=Manager}) ->
     Res = run(Tasks),
     Manager ! {job_finished, Id, Res},
     {stop, normal, State};
 handle_info(_,S) -> {noreply,S}.
 
-terminate(_,_) -> ok.
-code_change(_,S,_) -> {ok,S}.
-
 %% internal functions
 
+-spec run(tasks_map()) -> {ok, map()} | {error, any()}.
 run(Tasks) ->
     case job_sort:job_sort(Tasks) of
         {error, Reason} ->
@@ -43,6 +53,8 @@ run(Tasks) ->
             end
     end.
 
+-spec execute([task_name()], tasks_map(), [map()]) ->
+          {ok, [map()]} | {error, map()}.
 execute([], _Tasks, Acc) ->
     {ok, lists:reverse(Acc)};
 execute([Name | Rest], Tasks, Acc) ->
@@ -60,6 +72,7 @@ execute([Name | Rest], Tasks, Acc) ->
                       partial => lists:reverse(Acc)}}
     end.
 
+-spec run_cmd(command()) -> {ok, binary()} | {error, any()}.
 run_cmd(Cmd0) ->
     Cmd = to_list(Cmd0),
     {Family, _} = os:type(),
@@ -79,6 +92,8 @@ run_cmd(Cmd0) ->
             collect_port(Port, [])
     end.
 
+-spec collect_port(port(), [binary()]) ->
+          {ok, binary()} | {error, any()}.
 collect_port(Port, Acc) ->
     receive
         {Port, {data, Data}}     -> collect_port(Port, [Data | Acc]);
@@ -88,6 +103,7 @@ collect_port(Port, Acc) ->
         {error, timeout}
     end.
 
+-spec to_list(term()) -> string().
 to_list(B) when is_binary(B) -> binary_to_list(B);
 to_list(L) when is_list(L)   -> L;
 to_list(X)                   -> lists:flatten(io_lib:format("~p", [X])).

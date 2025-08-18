@@ -5,9 +5,12 @@
 -export([start_link/0, init/1]).
 -define(SERVER, ?MODULE).
 
+-spec start_link() -> {ok, pid()} | {error, any()}.
 start_link() ->
     supervisor:start_link({local, ?SERVER}, ?MODULE, []).
 
+-spec init(list()) ->
+          {ok, {supervisor:sup_flags(), [supervisor:child_spec()]}}.
 init([]) ->
 
     Dispatch = cowboy_router:compile([

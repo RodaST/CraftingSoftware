@@ -3,24 +3,35 @@
 -export([start_link/0, run/1]).
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2]).
 
--record(job, {id,
-              tasks,
-              status,
-              pid,
-              result,
-              waiter}).
+-include("types.hrl").
 
+-record(job, {
+    id      :: job_id(),
+    tasks   :: tasks_map(),
+    status  :: job_status(),
+    pid     :: pid() | undefined,
+    result  :: map() | undefined,
+    waiter  :: undefined | {pid(), term()}
+}).
+
+
+-spec start_link() -> {ok, pid()} | {error, any()}.
 start_link() ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
 
+-spec run(tasks_map()) ->
+          {ok, map()} | {error, any()}.
 run(TasksMap) ->
     gen_server:call(?MODULE, {run, TasksMap}, infinity).
 
+-spec init(list()) -> {ok, map()}.
 init([]) ->
     {ok, #{jobs => #{}, next_id => 1}}.
 
 %%gen_server
 
+-spec handle_call(term(), {pid(), term()}, map()) ->
+          {reply, term(), map()} | {noreply, map()}.
 handle_call({run, Tasks}, From, State) ->
     Id = maps:get(next_id, State),
     Pid = job_worker:start_link(Id, Tasks, self()),
@@ -30,8 +41,10 @@ handle_call({run, Tasks}, From, State) ->
 
 handle_call(_,_,S) -> {reply, ok, S}.
 
+-spec handle_cast(term(), map()) -> {noreply, map()}.
 handle_cast(_,S) -> {noreply,S}.
 
+-spec handle_info(term(), map()) -> {noreply, map()}.
 handle_info({job_finished, Id, Result}, State) ->
     Jobs = maps:get(jobs, State),
     case maps:get(Id, Jobs, undefined) of

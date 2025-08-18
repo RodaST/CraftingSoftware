@@ -5,7 +5,6 @@
   {modules, [
       job_app,
       job_app_sup,
-      http_server,
       http_handler,
       job_manager,
       job_worker,
