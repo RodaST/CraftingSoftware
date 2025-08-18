@@ -2,7 +2,6 @@
 
 -module(http_handler).
 -behaviour(cowboy_handler).
-
 -export([init/2]).
 
 init(Req0, _State) ->
